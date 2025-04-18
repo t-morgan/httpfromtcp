@@ -35,7 +35,6 @@ func main() {
 		fmt.Printf("- Target: %v\n", request.RequestLine.RequestTarget)
 		fmt.Printf("- Version: %v\n", request.RequestLine.HttpVersion)
 
-
 		fmt.Println("Connection closed!")
 	}
 
