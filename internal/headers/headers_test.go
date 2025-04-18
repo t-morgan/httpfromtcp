@@ -74,4 +74,36 @@ func TestRequestLineParse(t *testing.T) {
 	require.Error(t, err)
 	assert.Equal(t, 0, n)
 	assert.False(t, done)
+
+	// Test: valid multiple value header
+	headers = NewHeaders()
+	data = []byte("Set-Person: lane-loves-go\r\nSet-Person: prime-loves-zig\r\nSet-Person: tj-loves-ocaml\r\n\r\n")
+	bytesRead := 0
+	n, done, err = headers.Parse(data)
+	bytesRead += n
+	require.NoError(t, err)
+	require.NotNil(t, headers)
+	assert.Equal(t, "lane-loves-go", headers["set-person"])
+	assert.Equal(t, 27, n)
+	assert.False(t, done)
+	n, done, err = headers.Parse(data[bytesRead:])
+	bytesRead += n
+	require.NoError(t, err)
+	require.NotNil(t, headers)
+	assert.Equal(t, "lane-loves-go, prime-loves-zig", headers["set-person"])
+	assert.Equal(t, 29, n)
+	assert.False(t, done)
+	n, done, err = headers.Parse(data[bytesRead:])
+	bytesRead += n
+	require.NoError(t, err)
+	require.NotNil(t, headers)
+	assert.Equal(t, "lane-loves-go, prime-loves-zig, tj-loves-ocaml", headers["set-person"])
+	assert.Equal(t, 28, n)
+	assert.False(t, done)
+	n, done, err = headers.Parse(data[bytesRead:])
+	require.NoError(t, err)
+	require.NotNil(t, headers)
+	assert.Equal(t, "lane-loves-go, prime-loves-zig, tj-loves-ocaml", headers["set-person"])
+	assert.Equal(t, 0, n)
+	assert.True(t, done)
 }

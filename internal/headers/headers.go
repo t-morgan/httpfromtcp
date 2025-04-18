@@ -42,7 +42,12 @@ func (h Headers) Parse(data []byte) (n int, done bool, err error) {
 		}
 	}
 
-	h[nameKey] = strings.TrimSpace(string(value))
+	currentValue, exists := h[nameKey]
+	if exists {
+		h[nameKey] = currentValue + ", " + strings.TrimSpace(string(value))
+	} else {
+		h[nameKey] = strings.TrimSpace(string(value))
+	}
 	n = crlfIdx + len(crlf)
 	
 	return n, false, nil
