@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"strings"
-	"unicode"
 )
 
 type Headers map[string]string
@@ -24,33 +23,40 @@ func (h Headers) Parse(data []byte) (n int, done bool, err error) {
 	}
 
 	if crlfIdx == 0 {
-		return n, true, nil
+		return 2, true, nil
 	}
 
 	name, value, found := bytes.Cut(data[:crlfIdx], separator)
 	if !found {
 		return 0, false, fmt.Errorf("invalid header: %v", string(data))
 	}
-	if unicode.IsSpace(rune(name[len(name)-1])) {
-		return 0, false, fmt.Errorf("header name ends in whitespace: %v", string(name))
+
+	nameKey := strings.ToLower(string(name))
+	if nameKey != strings.TrimRight(nameKey, " ") {
+		return 0, false, fmt.Errorf("header name ends in whitespace: %v", nameKey)
 	}
 
-	nameKey := strings.ToLower(strings.TrimSpace(string(name)))
-	for i, b := range nameKey {
+	nameKey = strings.TrimSpace(nameKey)
+	for _, b := range nameKey {
 		if !contains(validNameChars, byte(b)) {
-			return 0, false, fmt.Errorf("invalid character '%c' (0x%x) at index %d", b, b, i)
+			return 0, false, fmt.Errorf("invalid header token found: %v", nameKey)
 		}
 	}
 
-	currentValue, exists := h[nameKey]
-	if exists {
-		h[nameKey] = currentValue + ", " + strings.TrimSpace(string(value))
-	} else {
-		h[nameKey] = strings.TrimSpace(string(value))
+	h.Set(nameKey, strings.TrimSpace(string(value)))
+	return crlfIdx + 2, false, nil
+}
+
+func (h Headers) Set(key, value string) {
+	key = strings.ToLower(key)
+	v, ok := h[key]
+	if ok {
+		value = strings.Join([]string{
+			v,
+			value,
+		}, ", ")
 	}
-	n = crlfIdx + len(crlf)
-	
-	return n, false, nil
+	h[key] = value
 }
 
 func contains(s string, b byte) bool {
