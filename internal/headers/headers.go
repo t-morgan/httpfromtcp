@@ -15,6 +15,7 @@ func NewHeaders() Headers {
 
 var separator = []byte(":")
 var crlf = "\r\n"
+var validNameChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!#$%'*+-.^_`|~"
 
 func (h Headers) Parse(data []byte) (n int, done bool, err error) {
 	crlfIdx := bytes.Index(data, []byte(crlf))
@@ -34,8 +35,24 @@ func (h Headers) Parse(data []byte) (n int, done bool, err error) {
 		return 0, false, fmt.Errorf("header name ends in whitespace: %v", string(name))
 	}
 
-	h[strings.TrimSpace(string(name))] = strings.TrimSpace(string(value))
+	nameKey := strings.ToLower(strings.TrimSpace(string(name)))
+	for i, b := range nameKey {
+		if !contains(validNameChars, byte(b)) {
+			return 0, false, fmt.Errorf("invalid character '%c' (0x%x) at index %d", b, b, i)
+		}
+	}
+
+	h[nameKey] = strings.TrimSpace(string(value))
 	n = crlfIdx + len(crlf)
 	
 	return n, false, nil
+}
+
+func contains(s string, b byte) bool {
+	for i := 0; i < len(s); i++ {
+		if s[i] == b {
+			return true
+		}
+	}
+	return false
 }

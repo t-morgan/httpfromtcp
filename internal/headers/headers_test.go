@@ -14,7 +14,7 @@ func TestRequestLineParse(t *testing.T) {
 	n, done, err := headers.Parse(data)
 	require.NoError(t, err)
 	require.NotNil(t, headers)
-	assert.Equal(t, "localhost:42069", headers["Host"])
+	assert.Equal(t, "localhost:42069", headers["host"])
 	assert.Equal(t, 23, n)
 	assert.False(t, done)
 
@@ -32,7 +32,7 @@ func TestRequestLineParse(t *testing.T) {
 	n, done, err = headers.Parse(data)
 	require.NoError(t, err)
 	require.NotNil(t, headers)
-	assert.Equal(t, "localhost:42069", headers["Host"])
+	assert.Equal(t, "localhost:42069", headers["host"])
 	assert.Equal(t, 37, n)
 	assert.False(t, done)
 
@@ -44,16 +44,16 @@ func TestRequestLineParse(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, headers)
 	assert.Equal(t, "header", headers["first"])
-	assert.Equal(t, "localhost:42069", headers["Host"])
-	assert.Equal(t, "", headers["Authorization"])
+	assert.Equal(t, "localhost:42069", headers["host"])
+	assert.Equal(t, "", headers["authorization"])
 	assert.Equal(t, 23, n)
 	assert.False(t, done)
 	n, done, err = headers.Parse(data[n:])
 	require.NoError(t, err)
 	require.NotNil(t, headers)
 	assert.Equal(t, "header", headers["first"])
-	assert.Equal(t, "localhost:42069", headers["Host"])
-	assert.Equal(t, "Basic credential", headers["Authorization"])
+	assert.Equal(t, "localhost:42069", headers["host"])
+	assert.Equal(t, "Basic credential", headers["authorization"])
 	assert.Equal(t, 33, n)
 	assert.False(t, done)
 
@@ -66,4 +66,12 @@ func TestRequestLineParse(t *testing.T) {
 	assert.Empty(t, headers)
 	assert.Equal(t, 0, n)
 	assert.True(t, done)
+
+	// Test: invalid header character
+	headers = NewHeaders()
+	data = []byte("H©st: localhost:42069\r\n\r\n")
+	n, done, err = headers.Parse(data)
+	require.Error(t, err)
+	assert.Equal(t, 0, n)
+	assert.False(t, done)
 }
