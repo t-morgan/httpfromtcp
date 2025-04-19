@@ -13,8 +13,9 @@ func NewHeaders() Headers {
 }
 
 var separator = []byte(":")
-var crlf = "\r\n"
-var validNameChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!#$%'*+-.^_`|~"
+
+const crlf = "\r\n"
+const validNameChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!#$%'*+-.^_`|~"
 
 func (h Headers) Parse(data []byte) (n int, done bool, err error) {
 	crlfIdx := bytes.Index(data, []byte(crlf))
