@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/sha256"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -8,6 +10,7 @@ import (
 	"strings"
 	"syscall"
 
+	"httpfromtcp/internal/headers"
 	"httpfromtcp/internal/request"
 	"httpfromtcp/internal/response"
 	"httpfromtcp/internal/server"
@@ -31,30 +34,41 @@ func main() {
 
 func handler(w *response.Writer, req *request.Request) {
 	if strings.HasPrefix(req.RequestLine.RequestTarget, "/httpbin/") {
-		w.WriteStatusLine(response.StatusOK)
-		headers := response.GetDefaultHeaders(0)
-		headers.Remove("content-length")
-		headers.Remove("connection")
-		headers.Override("content-type", "application/json")
-		headers.Set("transfer-encoding", "chunked")
-		w.WriteHeaders(headers)
 		binPath := strings.TrimPrefix(req.RequestLine.RequestTarget, "/httpbin/")
 		res, err := http.Get("https://httpbin.org/" + binPath)
 		if err != nil {
 			log.Fatal(err)
 		}
+
+		w.WriteStatusLine(response.StatusOK)
+		h := response.GetDefaultHeaders(0)
+		h.Remove("content-length")
+		h.Remove("connection")
+		h.Override("content-type", res.Header.Get("Content-Type"))
+		h.Set("transfer-encoding", "chunked")
+		h.Set("trailer", "x-content-sha256, x-content-length")
+		w.WriteHeaders(h)
+
+		responseBody := []byte{}
 		buffer := make([]byte, 1024)
 
 		for {
 			n, err := res.Body.Read(buffer)
 			if n > 0 {
 				w.WriteChunkedBody(buffer[:n])
+				responseBody = append(responseBody, buffer[:n]...)
 			}
 			if err != nil {
 				w.WriteChunkedBodyDone()
-				return
+				break
 			}
 		}
+		trailers := headers.NewHeaders()
+		sum := sha256.Sum256(responseBody)
+		trailers.Set("x-content-sha256", fmt.Sprintf("%x", sum))
+		trailers.Set("x-content-length", fmt.Sprintf("%d", len(responseBody)))
+		w.WriteTrailers(trailers)
+		return
 	}
 
 	switch req.RequestLine.RequestTarget {
