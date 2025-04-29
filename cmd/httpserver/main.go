@@ -1,7 +1,6 @@
 package main
 
 import (
-	"io"
 	"log"
 	"os"
 	"os/signal"
@@ -28,26 +27,25 @@ func main() {
 	log.Println("Server gracefully stopped")
 }
 
-func handler(w io.Writer, req *request.Request) *server.HandlerError {
+func handler(w *response.Writer, req *request.Request) {
 	switch req.RequestLine.RequestTarget {
 	case "/yourproblem":
-		return &server.HandlerError{
-			StatusCode: response.StatusBadRequest,
-			Message:    "Your problem is not my problem\n",
-		}
+		w.WriteStatusLine(response.StatusBadRequest)
+		headers := response.GetDefaultHeaders(len(server.BadRequestHTML))
+		headers.SetContentType("text/html")
+		w.WriteHeaders(headers)
+		w.WriteBody([]byte(server.BadRequestHTML))
 	case "/myproblem":
-		return &server.HandlerError{
-			StatusCode: response.StatusInternalServerError,
-			Message:    "Woopsie, my bad\n",
-		}
+		w.WriteStatusLine(response.StatusInternalServerError)
+		headers := response.GetDefaultHeaders(len(server.ServerErrorHTML))
+		headers.SetContentType("text/html")
+		w.WriteHeaders(headers)
+		w.WriteBody([]byte(server.ServerErrorHTML))
 	default:
-		_, err := io.WriteString(w, "All good, frfr\n")
-		if err != nil {
-			return &server.HandlerError{
-				StatusCode: response.StatusInternalServerError,
-				Message:    "Woopsie, my bad\n",
-			}
-		}
+		w.WriteStatusLine(response.StatusOK)
+		headers := response.GetDefaultHeaders(len(server.SuccessHTML))
+		headers.SetContentType("text/html")
+		w.WriteHeaders(headers)
+		w.WriteBody([]byte(server.SuccessHTML))
 	}
-	return nil
 }

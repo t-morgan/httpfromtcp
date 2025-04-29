@@ -60,6 +60,10 @@ func (h Headers) Set(key, value string) {
 	h[key] = value
 }
 
+func (h Headers) SetContentType(value string) {
+	h["content-type"] = value
+}
+
 func contains(s string, b byte) bool {
 	for i := 0; i < len(s); i++ {
 		if s[i] == b {

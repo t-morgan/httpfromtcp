@@ -1,15 +1,45 @@
 package server
 
 import (
-	"bytes"
 	"httpfromtcp/internal/headers"
 	"httpfromtcp/internal/request"
 	"httpfromtcp/internal/response"
-	"io"
 	"log"
 	"net"
 	"strconv"
 	"sync/atomic"
+)
+
+const (
+	SuccessHTML = `<html>
+  <head>
+    <title>200 OK</title>
+  </head>
+  <body>
+    <h1>Success!</h1>
+    <p>Your request was an absolute banger.</p>
+  </body>
+</html>`
+
+	BadRequestHTML = `<html>
+  <head>
+    <title>400 Bad Request</title>
+  </head>
+  <body>
+    <h1>Bad Request</h1>
+    <p>Your request honestly kinda sucked.</p>
+  </body>
+</html>`
+
+	ServerErrorHTML = `<html>
+  <head>
+    <title>500 Internal Server Error</title>
+  </head>
+  <body>
+    <h1>Internal Server Error</h1>
+    <p>Okay, you know what? This one is on me.</p>
+  </body>
+</html>`
 )
 
 type HandlerError struct {
@@ -17,7 +47,7 @@ type HandlerError struct {
 	Message    string
 }
 
-type Handler func(w io.Writer, req *request.Request) *HandlerError
+type Handler func(w *response.Writer, req *request.Request)
 type Server struct {
 	listener net.Listener
 	closed   atomic.Bool
@@ -60,42 +90,15 @@ func (s *Server) handle(conn net.Conn) {
 
 	req, err := request.RequestFromReader(conn)
 	if err != nil {
-		writeError(conn, &HandlerError{
-			StatusCode: response.StatusBadRequest,
-			Message:    "Bad Request",
-		})
+		w := response.New(conn)
+		w.WriteStatusLine(response.StatusBadRequest)
+		headers := headers.NewHeaders()
+		headers.SetContentType("text/html")
+		w.WriteHeaders(headers)
+		w.WriteBody([]byte(BadRequestHTML))
 		return
 	}
 
-	buffer := bytes.Buffer{}
-
-	handlerError := s.handler(&buffer, req)
-	if handlerError != nil {
-		writeError(conn, handlerError)
-		return
-	}
-
-	responseBody := buffer.Bytes()
-	response.WriteStatusLine(conn, response.StatusOK)
-	response.WriteHeaders(conn, response.GetDefaultHeaders(len(responseBody)))
-	conn.Write([]byte(responseBody))
-}
-
-func writeError(conn io.Writer, handlerError *HandlerError) error {
-	err := response.WriteStatusLine(conn, handlerError.StatusCode)
-	if err != nil {
-		return err
-	}
-
-	headers := headers.NewHeaders()
-	headers.Set("Content-Type", "text/plain")
-	headers.Set("Content-Length", strconv.Itoa(len(handlerError.Message)))
-
-	err = response.WriteHeaders(conn, headers)
-	if err != nil {
-		return err
-	}
-
-	_, err = conn.Write([]byte(handlerError.Message))
-	return err
+	w := response.New(conn)
+	s.handler(w, req)
 }
