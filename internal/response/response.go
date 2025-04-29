@@ -2,6 +2,7 @@ package response
 
 import (
 	"errors"
+	"fmt"
 	"httpfromtcp/internal/headers"
 	"io"
 	"strconv"
@@ -104,6 +105,37 @@ func (w *Writer) WriteBody(p []byte) (int, error) {
 		return 0, errors.New("body already written or not ready yet")
 	}
 	n, err := w.writer.Write(p)
+	if err != nil {
+		return 0, err
+	}
+	w.writerState = done
+	return n, nil
+}
+
+func (w *Writer) WriteChunkedBody(p []byte) (int, error) {
+	if w.writerState != pendingBody {
+		return 0, errors.New("body already written or not ready yet")
+	}
+	_, err := io.WriteString(w.writer, fmt.Sprintf("%x\r\n", len(p)))
+	if err != nil {
+		return 0, err
+	}
+	n, err := w.writer.Write(p)
+	if err != nil {
+		return 0, err
+	}
+	_, err = io.WriteString(w.writer, "\r\n")
+	if err != nil {
+		return 0, err
+	}
+	return n, nil
+}
+
+func (w *Writer) WriteChunkedBodyDone() (int, error) {
+	if w.writerState != pendingBody {
+		return 0, errors.New("body already written or not ready yet")
+	}
+	n, err := io.WriteString(w.writer, "0\r\n\r\n")
 	if err != nil {
 		return 0, err
 	}
