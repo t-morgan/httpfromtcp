@@ -84,6 +84,16 @@ func handler(w *response.Writer, req *request.Request) {
 		headers.SetContentType("text/html")
 		w.WriteHeaders(headers)
 		w.WriteBody([]byte(server.ServerErrorHTML))
+	case "/video":
+		data, err := os.ReadFile("assets/vim.mp4")
+		if err != nil {
+			log.Fatal(err)
+		}
+		w.WriteStatusLine(response.StatusOK)
+		headers := response.GetDefaultHeaders(len(data))
+		headers.SetContentType("video/mp4")
+		w.WriteHeaders(headers)
+		w.WriteBody(data)
 	default:
 		w.WriteStatusLine(response.StatusOK)
 		headers := response.GetDefaultHeaders(len(server.SuccessHTML))
